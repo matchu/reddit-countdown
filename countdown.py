@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 from ConfigParser import SafeConfigParser
 from datetime import datetime
+from HTMLParser import HTMLParser
 from praw import Reddit
 import re
 
@@ -20,7 +21,7 @@ def update_countdown(username, password, subreddit_name, target):
     
     subreddit = reddit.get_subreddit(subreddit_name)
     settings = subreddit.get_settings()
-    description = settings['description']
+    description = HTMLParser().unescape(settings['description'])
     
     for key, value in compute_time_ago_params(target).iteritems():
         pattern = "\\[[^\\]]*\\]\\(#{0}\\)".format(key) # replace [<anything>](#<key>)
