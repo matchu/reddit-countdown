@@ -1,8 +1,45 @@
-from bs4 import BeautifulSoup
+from __future__ import division, print_function
 from ConfigParser import SafeConfigParser
 from datetime import datetime
-from HTMLParser import HTMLParser
 import praw
+
+UPDATE_START_LINE = '/* COUNTDOWN LIVE UPDATE: START */'
+UPDATE_END_LINE = '/* COUNTDOWN LIVE UPDATE: END */'
+UPDATE_STATIC_LINES = ['a[href="#days"], a[href="#hours"], a[href="#minutes"], a[href="#seconds"] {',
+                       '    color: inherit;',
+                       '    cursor: text;',
+                       '}']
+
+def compute_time_ago_params(target):
+    countdown_delta = target - datetime.now()
+    return {
+        'days': countdown_delta.days,
+        'hours': countdown_delta.seconds // 3600,
+        'minutes': countdown_delta.seconds // 60,
+        'seconds': countdown_delta.seconds
+    }
+
+def build_live_style_content_rules(time_ago_params):
+    return ['a[href="#%s"]:after { content: "%d"; }' % (k, v)
+            for k, v in time_ago_params.iteritems()]
+
+def build_live_style_lines(time_ago_params):
+    return ([UPDATE_START_LINE] + UPDATE_STATIC_LINES +
+            build_live_style_content_rules(time_ago_params) +
+            [UPDATE_END_LINE])
+
+def build_new_stylesheet(prev_style, time_ago_params):
+    new_style_lines = []
+    current_lines_are_live = False
+    for line in prev_style.split('\n'):
+        if line == UPDATE_START_LINE:
+            current_lines_are_live = True
+            new_style_lines += build_live_style_lines(time_ago_params)
+        elif line == UPDATE_END_LINE:
+            current_lines_are_live = False
+        elif not current_lines_are_live:
+            new_style_lines.append(line)
+    return '\n'.join(new_style_lines)
 
 def update_countdown(username, password, subreddit_name, target):
     user_agent = '/r/{0} countdown bot'.format(subreddit_name)
@@ -10,24 +47,12 @@ def update_countdown(username, password, subreddit_name, target):
     reddit.login(username, password)
     
     subreddit = reddit.get_subreddit(subreddit_name)
-    settings = subreddit.get_settings()
+    stylesheet_data = subreddit.get_stylesheet()
+    new_style = build_new_stylesheet(stylesheet_data['stylesheet'],
+                                     compute_time_ago_params(target))
     
-    h = HTMLParser()
-    description_html = h.unescape(settings['description'])
-    description_doc = BeautifulSoup(description_html)
-    
-    countdown_delta = target - datetime.now()
-    countdown_attrs = {
-        'days': str(countdown_delta.days),
-        'hours': str(countdown_delta.seconds / 3600),
-        'minutes': str(countdown_delta.seconds / 60),
-        'seconds': str(countdown_delta.seconds)
-    }
-    countdown_els = description_doc.find_all(**{'data-countdown': True})
-    for el in countdown_els:
-        el.string = countdown_attrs[el['data-countdown']]
-    
-    subreddit.update_settings(description=description_doc.prettify())
+    print(new_style)
+    subreddit.set_stylesheet(new_style, stylesheet_data['prevstyle'])
 
 if __name__ == '__main__':
     config_parser = SafeConfigParser()
@@ -41,4 +66,4 @@ if __name__ == '__main__':
                      subreddit_name=config_parser.get('reddit', 'subreddit'),
                      target=target_datetime)
     
-    print "Countdown updated."
+    print("Countdown updated.")
