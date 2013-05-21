@@ -12,7 +12,6 @@ First, set up [Python 2.7][py] and [the `pip` package manager][pip] if you
 haven't already, then install our lone dependency: `praw`, the Python Reddit
 API Wrapper.
 
-    pip install beautifulsoup4
     pip install praw
 
 Next, create a `countdown.cfg` file based on the provided
