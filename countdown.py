@@ -7,11 +7,16 @@ import re
 
 def compute_time_ago_params(target):
     countdown_delta = target - datetime.now()
+    days = countdown_delta.days
+    hours = countdown_delta.seconds // 3600
+    minutes = (countdown_delta.seconds - (hours * 3600)) // 60
+    seconds = (countdown_delta.seconds - (hours * 3600) - (minutes * 60))
+
     return {
-        'days': countdown_delta.days,
-        'hours': countdown_delta.seconds // 3600,
-        'minutes': countdown_delta.seconds // 60,
-        'seconds': countdown_delta.seconds
+        'days': days,
+        'hours': hours,
+        'minutes': minutes,
+        'seconds': seconds
     }
 
 def update_countdown(username, password, subreddit_name, target):
